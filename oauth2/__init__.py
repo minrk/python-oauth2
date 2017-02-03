@@ -169,6 +169,7 @@ class Provider(object):
 
     def _determine_grant_type(self, request):
         for grant in self.grant_types:
+            print('grant type', grant, request)
             grant_handler = grant(request, self)
             if grant_handler is not None:
                 return grant_handler

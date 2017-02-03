@@ -3,16 +3,10 @@ import json
 import os
 import signal
 import sys
-try:
-    from urllib.request import urlopen
-    from urllib.parse import parse_qs, urlencode
-except ImportError:
-    # python 2
-    from urllib import urlopen, urlencode
-    from urlparse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 # from multiprocessing import Process
-from threading import Thread
+import requests
 
 sys.path.insert(0, os.path.abspath(os.path.realpath(__file__) + '/../../../'))
 
@@ -132,15 +126,17 @@ class ClientApplication(object):
         token_endpoint = self.api_server_url + "/token"
         print('token endpoint', token_endpoint)
 
-        result = urlopen(token_endpoint,
-                                urlencode(post_params).encode('utf8'),
-                        headers={'Authorization': 'token oauth_secret'})
-        content = u""
-        for line in result:
-            content += line.decode('utf8')
-        print('content', content)
+        resp = requests.post(token_endpoint, data=urlencode(post_params).encode('utf8'),
+                        headers={
+                            'Authorization': 'token oauth_secret',
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        })
 
-        result = json.loads(content)
+        result = resp.json()
+        if "error" in result:
+            print("Error!", result)
+            return "500 Server Error", [resp.content], {'Content-Type': 'application/json'}
+        
         self.access_token = result["access_token"]
         self.token_type = result["token_type"]
 
@@ -180,7 +176,7 @@ class ClientApplication(object):
 
         if ("error" in query_params
                 and query_params["error"][0] == "access_denied"):
-            return "200 OK", "User has denied access", {}
+            return "200 OK", ["User has denied access"], {}
 
         if self.access_token is None:
             if self.auth_token is None:
@@ -189,7 +185,7 @@ class ClientApplication(object):
                 return self._request_access_token()
         else:
             confirmation = "Current access token '%s' of type '%s'" % (self.access_token, self.token_type)
-            return "200 OK", str(confirmation), {}
+            return "200 OK", [confirmation.encode('utf8')], {}
 
 
 def run_app_server():
