@@ -128,7 +128,6 @@ class ClientApplication(object):
 
         resp = requests.post(token_endpoint, data=urlencode(post_params).encode('utf8'),
                         headers={
-                            'Authorization': 'token oauth_secret',
                             'Content-Type': 'application/x-www-form-urlencoded',
                         })
 
@@ -183,9 +182,15 @@ class ClientApplication(object):
                 return self._request_auth_token()
             else:
                 return self._request_access_token()
-        else:
-            confirmation = "Current access token '%s' of type '%s'" % (self.access_token, self.token_type)
-            return "200 OK", [confirmation.encode('utf8')], {}
+        confirmation = "Current access token '%s' of type '%s'" % (self.access_token, self.token_type)
+        r = requests.get('http://localhost:8765/hub/api/user',
+            headers={
+                'Authorization': '%s %s' % (self.token_type, self.access_token)
+            }
+        )
+        r.raise_for_status()
+        model = r.json()
+        return "200 OK", [confirmation.encode('utf8'), b'\n', r.content], {}
 
 
 def run_app_server():
